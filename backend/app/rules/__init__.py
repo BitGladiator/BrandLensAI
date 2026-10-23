@@ -1,0 +1,1 @@
+"""Deterministic brand rule checks."""

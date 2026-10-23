@@ -1,0 +1,25 @@
+{
+  "brand_guidelines": [
+    {
+      "id": "VOICE-01",
+      "text": "Use clear, friendly language. Avoid exaggerated or absolute promises."
+    },
+    {
+      "id": "VOICE-02",
+      "text": "Keep claims specific and make sure factual statements are supported by approved facts."
+    }
+  ],
+  "approved_terms": [
+    {
+      "preferred": "customer",
+      "avoid": ["consumer", "buyer"]
+    }
+  ],
+  "approved_facts": [
+    {
+      "id": "FACT-01",
+      "text": "The service is available in 10 regions."
+    }
+  ],
+  "sample_draft": "Our consumer service is available in 10 regions. It is the best in the world and guarantees double the sales for every customer."
+}
