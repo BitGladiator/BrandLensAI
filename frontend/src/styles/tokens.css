@@ -1,0 +1,103 @@
+/* ==========================================================================
+   BrandLens AI — Modern B2B SaaS Design Tokens
+   ========================================================================== */
+
+:root {
+  /* Canvas & Surfaces */
+  --color-page-bg: #f8f8f6;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #fbfbf9;
+  --color-surface-hover: #f3f4f6;
+
+  /* Typography Colors */
+  --color-text-primary: #242b33;
+  --color-text-secondary: #596575;
+  --color-text-muted: #77818d;
+
+  /* Borders & Dividers */
+  --color-border: #d9dee5;
+  --color-border-subtle: #e6eaef;
+  --color-border-hover: #c4ccd6;
+  --color-border-focus: #344f6b;
+
+  /* Primary Brand: Deep Slate Blue */
+  --color-primary: #344f6b;
+  --color-primary-hover: #263e57;
+  --color-primary-active: #1d3145;
+  --color-primary-subtle: #edf2f7;
+  --color-primary-subtle-hover: #e2e8f0;
+
+  /* Secondary & Accents */
+  --color-secondary: #596575;
+  --color-secondary-hover: #434e5c;
+
+  /* Warm Ochre Accent (Restrained, e.g. medium severity / key detail) */
+  --color-accent-ochre: #b58a49;
+  --color-accent-ochre-bg: #fdf9f2;
+  --color-accent-ochre-border: #f4e7ce;
+  --color-accent-ochre-text: #8c6527;
+
+  /* Semantic Feedback States */
+  --color-error: #a43d35;
+  --color-error-bg: #fdf2f1;
+  --color-error-border: #f6d3cf;
+  --color-error-text: #8a2e27;
+
+  --color-success: #2e6855;
+  --color-success-bg: #f2f8f5;
+  --color-success-border: #c6e2d5;
+  --color-success-text: #204b3d;
+
+  --color-low: #596575;
+  --color-low-bg: #f1f4f7;
+  --color-low-border: #d9dee5;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Type Scale */
+  --text-xs: 0.8125rem;   /* 13px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-md: 1.0625rem;   /* 17px */
+  --text-lg: 1.1875rem;   /* 19px */
+  --text-xl: 1.375rem;    /* 22px */
+  --text-2xl: 1.875rem;   /* 30px */
+  --text-3xl: clamp(2.5rem, 2rem + 1.6vw, 3.25rem); /* 40px - 52px */
+
+  /* Spacing Scale (8px system) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Button Dimensions */
+  --btn-height-default: 44px;
+  --btn-height-sm: 34px;
+  --btn-height-lg: 48px;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  /* Shadows (Subtle, crisp) */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(24, 34, 45, 0.04);
+  --shadow-sm: 0 1px 3px rgba(24, 34, 45, 0.06), 0 1px 2px rgba(24, 34, 45, 0.03);
+  --shadow-md: 0 4px 8px -2px rgba(24, 34, 45, 0.06), 0 2px 4px -2px rgba(24, 34, 45, 0.04);
+  --shadow-dropdown: 0 6px 16px rgba(24, 34, 45, 0.08), 0 2px 4px rgba(24, 34, 45, 0.04);
+
+  /* Layout Containers (Generous for modern displays) */
+  --content-max-width: 1300px;
+  --content-reading-width: 760px;
+}
