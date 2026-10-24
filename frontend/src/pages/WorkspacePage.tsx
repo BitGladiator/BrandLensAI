@@ -90,13 +90,13 @@ export const WorkspacePage: React.FC = () => {
       setSelectedCategory('All');
       setStatusNotice(`Review completed with ${result.findings.length} finding${result.findings.length === 1 ? '' : 's'}.`);
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setErrorMessage(err.message);
-      } else if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage('An unexpected error occurred while reviewing the draft.');
-      }
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+          ? err.message
+          : 'An unexpected error occurred while reviewing the draft.';
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
@@ -112,38 +112,20 @@ export const WorkspacePage: React.FC = () => {
       return;
     }
 
-    // Check count of target occurrences in draft text
-    const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(escaped, 'g');
-    const matches = draftText.match(regex);
-
-    if (!matches || matches.length === 0) {
-      // Excerpt might have already been edited or changed
-      setStatusNotice(
-        `Could not find "${target}" in draft text. The excerpt may have been edited. Suggested replacement copied to clipboard.`
-      );
-      navigator.clipboard.writeText(replacement).catch(() => {});
+    if (!draftText.includes(target)) {
+      setStatusNotice(`Target excerpt "${target.slice(0, 30)}..." not found in current draft text.`);
       return;
     }
 
-    if (matches.length === 1) {
-      // Unambiguous exact match: replace directly
-      const updatedText = draftText.replace(target, replacement);
-      setDraftText(updatedText);
-      setAppliedFindingIds((prev) => new Set(prev).add(finding.id));
-      setStatusNotice(`Applied suggestion: Replaced "${target}" with "${replacement}".`);
-    } else {
-      // Multiple occurrences: replace the first occurrence safely and notify user
-      const updatedText = draftText.replace(target, replacement);
-      setDraftText(updatedText);
-      setAppliedFindingIds((prev) => new Set(prev).add(finding.id));
-      setStatusNotice(
-        `Applied to first occurrence of "${target}" (${matches.length} matches found). Please verify remaining instances.`
-      );
-    }
+    const newDraft = draftText.replace(target, replacement);
+    setDraftText(newDraft);
+
+    setActiveFindings((prev) => prev.filter((f) => f.id !== finding.id));
+    setAppliedFindingIds((prev) => new Set(prev).add(finding.id));
+    setStatusNotice(`Applied revision: "${target}" → "${replacement}".`);
   };
 
-  // Dismiss finding locally
+  // Dismiss finding
   const handleDismissFinding = (findingId: string) => {
     const findingToDismiss = activeFindings.find((f) => f.id === findingId);
     if (!findingToDismiss) return;
@@ -269,8 +251,8 @@ export const WorkspacePage: React.FC = () => {
                 />
               )}
 
-              {/* Finding Filters */}
-              {activeFindings.length > 0 && (
+              {/* Category Filter Tabs */}
+              {reviewResponse && (
                 <FindingFilters
                   findings={activeFindings}
                   selectedCategory={selectedCategory}
@@ -278,54 +260,55 @@ export const WorkspacePage: React.FC = () => {
                 />
               )}
 
-              {/* Findings List */}
-              {reviewResponse ? (
-                activeFindings.length > 0 ? (
-                  filteredFindings.length > 0 ? (
-                    <div className="findings-container" role="feed" aria-label="Review findings">
-                      {filteredFindings.map((finding) => (
-                        <FindingCard
-                          key={finding.id}
-                          finding={finding}
-                          onAcceptSuggestion={handleAcceptSuggestion}
-                          onDismiss={handleDismissFinding}
-                          isApplied={appliedFindingIds.has(finding.id)}
-                        />
-                      ))}
+              {/* Findings List or Empty State */}
+              {isLoading ? (
+                <div className="empty-state">
+                  <div className="spinner spinner-dark" style={{ width: 28, height: 28 }} />
+                  <h3 className="empty-state-title" style={{ marginTop: 12 }}>
+                    Reviewing draft with Groq Cloud AI...
+                  </h3>
+                  <p className="empty-state-text">
+                    Analyzing copy against brand guidelines, terminology rules, and approved facts.
+                  </p>
+                </div>
+              ) : reviewResponse ? (
+                filteredFindings.length > 0 ? (
+                  <div className="findings-list" role="feed" aria-label="Active review findings">
+                    {filteredFindings.map((finding) => (
+                      <FindingCard
+                        key={finding.id}
+                        finding={finding}
+                        isApplied={appliedFindingIds.has(finding.id)}
+                        onAcceptSuggestion={handleAcceptSuggestion}
+                        onDismiss={handleDismissFinding}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
                     </div>
-                  ) : (
-                    <div className="empty-state">
-                      <div className="empty-state-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-                        </svg>
-                      </div>
-                      <h3 className="empty-state-title">No findings in this category</h3>
-                      <p className="empty-state-text">
-                        No active issues match "{selectedCategory}". Switch to "All" to view remaining findings.
-                      </p>
+                    <h3 className="empty-state-title">
+                      {selectedCategory === 'All' ? 'No active findings' : `No findings in "${selectedCategory}"`}
+                    </h3>
+                    <p className="empty-state-text">
+                      {dismissedFindings.length > 0
+                        ? `You have resolved or dismissed all findings in this view.`
+                        : `The draft meets all standards checked by Groq Cloud AI.`}
+                    </p>
+                    {selectedCategory !== 'All' && (
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => setSelectedCategory('All')}
                       >
-                        View all findings ({activeFindings.length})
+                        View all findings
                       </button>
-                    </div>
-                  )
-                ) : (
-                  <div className="empty-state" style={{ borderColor: 'var(--color-success-border)', background: 'var(--color-success-bg)' }}>
-                    <div className="empty-state-icon" style={{ background: '#d1fae5', color: 'var(--color-success-text)' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    </div>
-                    <h3 className="empty-state-title" style={{ color: 'var(--color-success-text)' }}>
-                      No brand issues detected
-                    </h3>
-                    <p className="empty-state-text">
-                      The current draft matches the enabled terminology and brand rules. Human editorial review is still recommended.
-                    </p>
+                    )}
                   </div>
                 )
               ) : (
@@ -338,9 +321,9 @@ export const WorkspacePage: React.FC = () => {
                       <line x1="12" y1="8" x2="12.01" y2="8"/>
                     </svg>
                   </div>
-                  <h3 className="empty-state-title">Ready to review draft</h3>
+                  <h3 className="empty-state-title">Ready for review</h3>
                   <p className="empty-state-text">
-                    Enter your draft content and click <strong>Run review</strong> to check against active brand standards.
+                    Enter your draft content and click <strong>Run review</strong> to evaluate it against brand standards using Groq Cloud AI.
                   </p>
                   <button
                     type="button"
