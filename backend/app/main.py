@@ -17,13 +17,14 @@ app = FastAPI(
 )
 
 # Wildcard CORS cannot be combined safely with credentialed requests.
-allow_all_origins = settings.allowed_origins == ["*"]
+allow_all_origins = "*" in settings.allowed_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if allow_all_origins else settings.allowed_origins,
+    allow_origin_regex=None if allow_all_origins else r"https://.*\.vercel\.app",
     allow_credentials=not allow_all_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 @app.middleware("http")

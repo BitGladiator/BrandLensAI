@@ -1,7 +1,13 @@
+"""Tests for the BrandLens AI review API powered by Groq Cloud AI."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.main import app
+from app.schemas.review import Finding, ReviewResponse
 from app.services import review_service
 
 client = TestClient(app)
@@ -14,8 +20,42 @@ def test_health_endpoint_reports_backend_up():
     assert response.json()["service"] == "BrandLens AI backend"
 
 
-def test_review_returns_terminology_finding():
-    settings.ai_review_enabled = False
+def test_review_rejects_missing_groq_api_key():
+    """When no Groq key is configured in backend/.env, return 400 Bad Request."""
+    settings.groq_api_key = None
+    response = client.post(
+        "/api/review",
+        json={
+            "draft_text": "Every consumer can use our service.",
+            "approved_terms": [{"preferred": "customer", "avoid": ["consumer"]}],
+        },
+    )
+    assert response.status_code == 400
+    assert "Groq Cloud API key is not configured" in response.json()["detail"]
+
+
+def test_review_succeeds_with_backend_groq_integration(monkeypatch):
+    """When Groq review runs, it returns dynamic findings and dynamic summary."""
+    mock_response = ReviewResponse(
+        findings=[
+            Finding(
+                id="F-001",
+                category="Terminology",
+                severity="Low",
+                excerpt="consumer",
+                explanation="The brand guidelines prefer customer over consumer.",
+                suggestion="customer",
+                evidence_ids=["TERM-01"],
+                confidence="high",
+            )
+        ],
+        review_summary="Groq Cloud AI completed the review: 1 terminology issue found.",
+        needs_human_review=True,
+    )
+
+    fake_groq = AsyncMock(return_value=mock_response)
+    monkeypatch.setattr(review_service, "review_draft_with_groq", fake_groq)
+
     response = client.post(
         "/api/review",
         json={
@@ -26,11 +66,9 @@ def test_review_returns_terminology_finding():
     assert response.status_code == 200
     body = response.json()
     assert len(body["findings"]) == 1
-    finding = body["findings"][0]
-    assert finding["category"] == "Terminology"
-    assert finding["excerpt"] == "consumer"
-    assert finding["suggestion"] == "customer"
-    assert finding["evidence_ids"] == ["TERM-01"]
+    assert body["findings"][0]["category"] == "Terminology"
+    assert body["findings"][0]["excerpt"] == "consumer"
+    assert "Groq Cloud AI" in body["review_summary"]
     assert body["needs_human_review"] is True
 
 
@@ -49,14 +87,15 @@ def test_malformed_request_is_rejected():
     assert unexpected_field.status_code == 422
 
 
-def test_ai_failure_does_not_break_terminology_review(monkeypatch):
-    settings.ai_review_enabled = True
+def test_groq_api_error_returns_bad_gateway(monkeypatch):
+    """When Groq API returns an upstream error, return 502 with message."""
+    from app.services.groq_service import GroqApiError
 
-    async def fake_failed_ai(payload):
-        from app.services.ai_review_adapter import AIReviewError
-        raise AIReviewError("safe simulated failure")
+    async def fake_failing_groq(request):
+        raise GroqApiError("Groq Cloud API error: Rate limit reached", status_code=502)
 
-    monkeypatch.setattr(review_service, "run_ai_review", fake_failed_ai)
+    monkeypatch.setattr(review_service, "review_draft_with_groq", fake_failing_groq)
+
     response = client.post(
         "/api/review",
         json={
@@ -64,58 +103,63 @@ def test_ai_failure_does_not_break_terminology_review(monkeypatch):
             "approved_terms": [{"preferred": "customer", "avoid": ["consumer"]}],
         },
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert len(body["findings"]) == 1
-    assert "AI review is currently unavailable" in body["review_summary"]
-    assert body["needs_human_review"] is True
-    settings.ai_review_enabled = False
+    assert response.status_code == 502
+    assert "Rate limit reached" in response.json()["detail"]
 
 
-def test_clean_draft_returns_empty_findings_array():
-    settings.ai_review_enabled = False
-    response = client.post(
-        "/api/review",
-        json={
-            "draft_text": "Every customer can review the service details.",
-            "approved_terms": [{"preferred": "customer", "avoid": ["consumer"]}],
-        },
-    )
-    assert response.status_code == 200
-    assert response.json()["findings"] == []
-    assert response.json()["needs_human_review"] is True
-
-
-def test_ai_findings_are_combined_with_rule_findings(monkeypatch):
-    settings.ai_review_enabled = True
-
-    async def fake_ai(payload):
-        from app.schemas.review import Finding
-        assert payload["draft_text"].startswith("A consumer")
-        return [
+def test_groq_comprehensive_review_categories(monkeypatch):
+    """Groq review returns multiple finding categories dynamically."""
+    mock_response = ReviewResponse(
+        findings=[
             Finding(
-                id="F-AI-001",
+                id="F-001",
+                category="Terminology",
+                severity="Low",
+                excerpt="consumer",
+                explanation="Avoid consumer.",
+                suggestion="customer",
+                evidence_ids=["TERM-01"],
+                confidence="high",
+            ),
+            Finding(
+                id="F-002",
                 category="Tone",
                 severity="Medium",
                 excerpt="guaranteed success",
-                explanation="The supplied guideline asks for specific, non-exaggerated claims.",
-                suggestion="Describe the supported benefit without an absolute promise.",
+                explanation="Violates guideline VOICE-01 regarding absolute promises.",
+                suggestion="designed for success",
                 evidence_ids=["VOICE-01"],
                 confidence="medium",
-            )
-        ]
+            ),
+            Finding(
+                id="F-003",
+                category="Claim Verification",
+                severity="High",
+                excerpt="doubles sales in 3 days",
+                explanation="No evidence in approved facts supports this claim.",
+                suggestion="verify with performance data",
+                evidence_ids=[],
+                confidence="high",
+            ),
+        ],
+        review_summary="Groq Cloud AI identified 3 findings across terminology, tone, and claims.",
+        needs_human_review=True,
+    )
 
-    monkeypatch.setattr(review_service, "run_ai_review", fake_ai)
+    fake_groq = AsyncMock(return_value=mock_response)
+    monkeypatch.setattr(review_service, "review_draft_with_groq", fake_groq)
+
     response = client.post(
         "/api/review",
         json={
-            "draft_text": "A consumer is guaranteed success.",
+            "draft_text": "A consumer gets guaranteed success and doubles sales in 3 days.",
             "approved_terms": [{"preferred": "customer", "avoid": ["consumer"]}],
-            "brand_guidelines": [{"id": "VOICE-01", "text": "Avoid exaggerated promises."}],
+            "brand_guidelines": [{"id": "VOICE-01", "text": "Avoid absolute promises."}],
         },
     )
     assert response.status_code == 200
     body = response.json()
-    assert {finding["category"] for finding in body["findings"]} == {"Terminology", "Tone"}
-    assert body["review_summary"].startswith("Review completed")
-    settings.ai_review_enabled = False
+    assert len(body["findings"]) == 3
+    categories = {f["category"] for f in body["findings"]}
+    assert categories == {"Terminology", "Tone", "Claim Verification"}
+    assert body["review_summary"].startswith("Groq Cloud AI")
