@@ -180,6 +180,10 @@ a.btn-lg {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
@@ -198,6 +202,7 @@ a.btn-lg {
 
 .health-dot.connected {
   background-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-subtle);
 }
 
 .health-dot.disconnected {
@@ -206,6 +211,33 @@ a.btn-lg {
 
 .health-dot.checking {
   background-color: var(--color-accent-ochre);
+}
+
+.health-pill-text-desktop {
+  display: inline;
+}
+
+.health-pill-text-mobile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .health-pill-text-desktop {
+    display: none;
+  }
+  .health-pill-text-mobile {
+    display: inline;
+  }
+}
+
+@media (max-width: 360px) {
+  .health-pill-text-mobile {
+    display: none;
+  }
+  .health-pill {
+    padding: 6px 8px;
+    gap: 0;
+  }
 }
 
 /* Cards & Surfaces */

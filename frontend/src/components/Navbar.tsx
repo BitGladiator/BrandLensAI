@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { HealthIndicator } from './HealthIndicator';
 import { BrandLogo } from './BrandLogo';
@@ -14,14 +14,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onHealthStatusChange }) => {
 
   const closeMobile = () => setMobileMenuOpen(false);
 
+  // Automatically close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+    if (mobileMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [mobileMenuOpen]);
+
   return (
     <header className="navbar">
       <div className="navbar-container">
         <Link to="/" className="brand-logo-link" onClick={closeMobile} aria-label="BrandLens AI Home">
-          <BrandLogo size={32} />
+          <BrandLogo size={28} />
           <div className="brand-logo-text">
             <span className="brand-title">BrandLens AI</span>
-
           </div>
         </Link>
 
@@ -59,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onHealthStatusChange }) => {
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {mobileMenuOpen ? (
                 <>
                   <line x1="18" y1="6" x2="6" y2="18"/>
@@ -92,11 +109,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onHealthStatusChange }) => {
           ) : (
             <>
               <Link to="/" className="nav-link" onClick={closeMobile}>← Product overview</Link>
-              <Link to="/workspace" className="btn btn-secondary btn-sm" onClick={closeMobile}>
-                Workspace
-              </Link>
+              <span className="badge badge-category" style={{ alignSelf: 'flex-start' }}>Active: Workspace</span>
             </>
           )}
+
+          <div className="nav-mobile-status">
+            <span>API Status</span>
+            <HealthIndicator onStatusChange={onHealthStatusChange} showFullLabelAlways={true} />
+          </div>
         </nav>
       )}
     </header>
